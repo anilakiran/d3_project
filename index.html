@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Heart Disease Dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        h1 { margin-bottom: 10px; color: #1a365d; text-align: center;}
+        
+        .controls { 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px; 
+            display: flex; justify-content: center; gap: 30px; align-items: center;
+        }
+
+        .dashboard-grid { 
+            display: grid; grid-template-columns: repeat(2, 1fr); 
+            gap: 25px; max-width: 1200px; margin: 0 auto; 
+        }
+
+        .chart-container { 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
+            position: relative;
+        }
+
+        h3 { margin-top: 0; font-size: 1.1rem; color: #4a5568; border-bottom: 1px solid #edf2f7; padding-bottom: 10px; text-align: center;}
+        
+        .tooltip { 
+            position: absolute; background: rgba(45, 55, 72, 0.95); 
+            color: white; padding: 10px 15px; border-radius: 8px; 
+            pointer-events: none; font-size: 14px; opacity: 0; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10;
+        }
+
+        .project-footer {
+            max-width: 1200px; margin: 40px auto; padding: 25px;
+            background: #ffffff; border-top: 4px solid #1a365d;
+            border-radius: 8px; color: #4a5568;
+            text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            line-height: 1.6;
+        }
+
+        input[type="file"] { border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px; cursor: pointer; }
+        select { padding: 8px; border-radius: 6px; border: 1px solid #cbd5e0; min-width: 120px; }
+        #status { font-size: 0.9rem; color: #718096; margin-bottom: 20px; text-align: center;}
+    </style>
+</head>
+<body>
+
+    <h1>Heart Disease Interactive Dashboard</h1>
+    <div id="status">Upload a CSV to begin or ensure 'data.csv' is in the folder.</div>
+
+    <div class="controls">
+        <div>
+            <label><strong>1. Add New CSV File:</strong></label><br>
+            <input type="file" id="upload" accept=".csv">
+        </div>
+        <div>
+            <label><strong>2. Filter by Sex:</strong></label><br>
+            <select id="filter">
+                <option value="all">All Patients</option>
+                <option value="0">Female (0)</option>
+                <option value="1">Male (1)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div id="bar" class="chart-container"><h3>Patients by Sex</h3></div>
+        <div id="pie" class="chart-container"><h3>Chest Pain Distribution</h3></div>
+        <div id="scatter" class="chart-container"><h3>Age vs. Cholesterol</h3></div>
+        <div id="line" class="chart-container"><h3>Age vs. Max Heart Rate</h3></div>
+    </div>
+
+    <div class="project-footer">
+        <p><strong>Project Objective:</strong> This interactive medical dashboard is designed to analyze key indicators of heart disease. By visualizing data across four distinct charts, users can identify correlations between demographic factors like age and sex against clinical metrics such as cholesterol levels and maximum heart rate, providing an accessible way to interpret complex health datasets.</p>
+    </div>
+
+    <div class="tooltip" id="main-tooltip"></div>
+
+<script>
+    const width = 500;
+    const height = 350;
+    const margin = {top: 30, right: 30, bottom: 50, left: 60};
+    const tooltip = d3.select("#main-tooltip");
+    let globalData = [];
+
+    // --- TOOLTIP HELPERS ---
+    function showTooltip(event, content) {
+        tooltip.html(content).style("opacity", 1).style("left", (event.pageX + 15) + "px").style("top", (event.pageY - 15) + "px");
+    }
+    function hideTooltip() { tooltip.style("opacity", 0); }
+
+    // --- DATA LOADING ---
+    d3.select("#upload").on("change", function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => processData(d3.csvParse(event.target.result));
+        reader.readAsText(file);
+    });
+
+    function processData(data) {
+        data.forEach(d => {
+            d.Age = +d.Age || 0;
+            d.Cholesterol = +d.Cholesterol || 0;
+            d["Max heart rate"] = +d["Max heart rate"] || 0;
+            d.Sex = String(d.Sex).trim();
+            d["Chest pain type"] = d["Chest pain type"] || "N/A";
+        });
+        globalData = data;
+        renderAll("all");
+        d3.select("#status").text(`Displaying ${data.length} records.`);
+    }
+
+    d3.select("#filter").on("change", function() { renderAll(this.value); });
+
+    function renderAll(filterValue) {
+        const filtered = filterValue === "all" ? globalData : globalData.filter(d => d.Sex === filterValue);
+        d3.selectAll("svg").remove();
+        if (filtered.length === 0) return;
+        drawBar(filtered);
+        drawPie(filtered);
+        drawScatter(filtered);
+        drawLine(filtered);
+    }
+
+    // --- CHART 1: BAR ---
+    function drawBar(data) {
+        const svg = d3.select("#bar").append("svg").attr("width", width).attr("height", height);
+        const counts = Array.from(d3.rollup(data, v => v.length, d => d.Sex), ([k, v]) => ({label: k == "0" ? "Female" : "Male", value: v}));
+        const x = d3.scaleBand().domain(counts.map(d => d.label)).range([margin.left, width - margin.right]).padding(0.4);
+        const y = d3.scaleLinear().domain([0, d3.max(counts, d => d.value)]).range([height - margin.bottom, margin.top]);
+        svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
+        svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
+        svg.selectAll("rect").data(counts).enter().append("rect")
+            .attr("x", d => x(d.label)).attr("y", d => y(d.value)).attr("width", x.bandwidth())
+            .attr("height", d => height - margin.bottom - y(d.value)).attr("fill", "#4299e1")
+            .on("mouseover", (e, d) => showTooltip(e, `<strong>Sex:</strong> ${d.label}<br><strong>Count:</strong> ${d.value}`)).on("mouseout", hideTooltip);
+    }
+
+    // --- CHART 2: PIE (Solid - No Hole) ---
+    function drawPie(data) {
+        const svg = d3.select("#pie").append("svg").attr("width", width).attr("height", height)
+                      .append("g").attr("transform", `translate(${width/2},${height/2 + 10})`);
+        const counts = Array.from(d3.rollup(data, v => v.length, d => d["Chest pain type"]), ([k, v]) => ({key: k, value: v}));
+        const pie = d3.pie().value(d => d.value);
+        // innerRadius(0) makes it a solid pie chart
+        const arc = d3.arc().innerRadius(0).outerRadius(120);
+        const color = d3.scaleOrdinal(d3.schemeTableau10);
+        svg.selectAll("path").data(pie(counts)).enter().append("path")
+            .attr("d", arc).attr("fill", (d, i) => color(i)).attr("stroke", "white").style("stroke-width", "2px")
+            .on("mouseover", (e, d) => showTooltip(e, `<strong>Type:</strong> ${d.data.key}<br><strong>Count:</strong> ${d.data.value}`)).on("mouseout", hideTooltip);
+    }
+
+    // --- CHART 3: SCATTER ---
+    function drawScatter(data) {
+        const svg = d3.select("#scatter").append("svg").attr("width", width).attr("height", height);
+        const x = d3.scaleLinear().domain(d3.extent(data, d => d.Age)).nice().range([margin.left, width - margin.right]);
+        const y = d3.scaleLinear().domain(d3.extent(data, d => d.Cholesterol)).nice().range([height - margin.bottom, margin.top]);
+        svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
+        svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
+        svg.selectAll("circle").data(data).enter().append("circle")
+            .attr("cx", d => x(d.Age)).attr("cy", d => y(d.Cholesterol)).attr("r", 4.5).attr("fill", "#f56565").attr("opacity", 0.7)
+            .on("mouseover", (e, d) => showTooltip(e, `<strong>Age:</strong> ${d.Age}<br><strong>Chol:</strong> ${d.Cholesterol}`)).on("mouseout", hideTooltip);
+    }
+
+    // --- CHART 4: LINE ---
+    function drawLine(data) {
+        const svg = d3.select("#line").append("svg").attr("width", width).attr("height", height);
+        const agg = Array.from(d3.rollup(data, v => d3.mean(v, d => d["Max heart rate"]), d => d.Age), ([age, hr]) => ({age, hr})).sort((a,b)=>a.age-b.age);
+        const x = d3.scaleLinear().domain(d3.extent(agg, d => d.age)).range([margin.left, width - margin.right]);
+        const y = d3.scaleLinear().domain(d3.extent(agg, d => d.hr)).nice().range([height - margin.bottom, margin.top]);
+        svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
+        svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
+        const line = d3.line().x(d => x(d.age)).y(d => y(d.hr)).curve(d3.curveMonotoneX);
+        svg.append("path").datum(agg).attr("fill", "none").attr("stroke", "#48bb78").attr("stroke-width", 3).attr("d", line);
+    }
+
+    d3.csv("data.csv").then(processData).catch(() => console.log("Waiting for data upload..."));
+</script>
+</body>
+</html>
