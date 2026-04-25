@@ -1,185 +1,575 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Heart Disease Dashboard</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
-        h1 { margin-bottom: 10px; color: #1a365d; text-align: center;}
-        
-        .controls { 
-            background: white; padding: 20px; border-radius: 12px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 30px; 
-            display: flex; justify-content: center; gap: 30px; align-items: center;
-        }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Superstore Sales Dashboard</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --card: #1c1c22;
+    --border: #2a2a35;
+    --accent1: #f5a623;
+    --accent2: #4fc3f7;
+    --accent3: #81c784;
+    --accent4: #e57373;
+    --text: #e8e8f0;
+    --muted: #7a7a8e;
+    --cat1: #f5a623;
+    --cat2: #4fc3f7;
+    --cat3: #81c784;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; padding: 24px; }
 
-        .dashboard-grid { 
-            display: grid; grid-template-columns: repeat(2, 1fr); 
-            gap: 25px; max-width: 1200px; margin: 0 auto; 
-        }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 16px; }
+  header h1 { font-family: 'Space Mono', monospace; font-size: 1.4rem; color: var(--accent1); letter-spacing: -0.5px; }
+  header p { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
 
-        .chart-container { 
-            background: white; padding: 20px; border-radius: 12px; 
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); 
-            position: relative;
-        }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  }
+  .ctrl-group { display: flex; flex-direction: column; gap: 6px; }
+  .ctrl-group label { font-size: 0.72rem; color: var(--muted); font-family: 'Space Mono', monospace; text-transform: uppercase; letter-spacing: 1px; }
+  select, button {
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  select:hover, button:hover { border-color: var(--accent1); }
+  select:focus { outline: none; border-color: var(--accent2); }
+  button.active { background: var(--accent1); color: #000; font-weight: 700; border-color: var(--accent1); }
+  .toggle-row { display: flex; gap: 8px; }
 
-        h3 { margin-top: 0; font-size: 1.1rem; color: #4a5568; border-bottom: 1px solid #edf2f7; padding-bottom: 10px; text-align: center;}
-        
-        .tooltip { 
-            position: absolute; background: rgba(45, 55, 72, 0.95); 
-            color: white; padding: 10px 15px; border-radius: 8px; 
-            pointer-events: none; font-size: 14px; opacity: 0; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10;
-        }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-full { grid-column: 1 / -1; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .grid-full { grid-column: 1; } }
 
-        .project-footer {
-            max-width: 1200px; margin: 40px auto; padding: 25px;
-            background: #ffffff; border-top: 4px solid #1a365d;
-            border-radius: 8px; color: #4a5568;
-            text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            line-height: 1.6;
-        }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: #3a3a48; }
+  .card h2 { font-family: 'Space Mono', monospace; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+  .card .badge { display: inline-block; font-size: 0.65rem; background: var(--surface); color: var(--accent2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 10px; margin-bottom: 14px; font-family: 'Space Mono', monospace; }
 
-        input[type="file"] { border: 1px dashed #cbd5e0; padding: 10px; border-radius: 6px; cursor: pointer; }
-        select { padding: 8px; border-radius: 6px; border: 1px solid #cbd5e0; min-width: 120px; }
-        #status { font-size: 0.9rem; color: #718096; margin-bottom: 20px; text-align: center;}
-    </style>
+  svg { width: 100%; overflow: visible; }
+  .axis text { fill: var(--muted); font-size: 11px; font-family: 'DM Sans', sans-serif; }
+  .axis path, .axis line { stroke: var(--border); }
+  .grid-line { stroke: var(--border); stroke-dasharray: 3,3; stroke-opacity: 0.5; }
+
+  .dot { cursor: pointer; transition: opacity 0.2s; }
+  .dot.dimmed { opacity: 0.15; }
+  .dot.selected { stroke: #fff; stroke-width: 2.5px; }
+
+  .bar { cursor: pointer; transition: opacity 0.2s, filter 0.2s; }
+  .bar.dimmed { opacity: 0.2; }
+  .bar.highlighted { filter: brightness(1.4); }
+
+  .line-path { fill: none; stroke-width: 2.5px; }
+
+  #tooltip {
+    position: fixed; pointer-events: none; z-index: 999;
+    background: #0d0d0f; border: 1px solid var(--accent1);
+    border-radius: 10px; padding: 12px 16px; font-size: 0.82rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6); max-width: 240px;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  #tooltip.visible { opacity: 1; }
+  #tooltip strong { color: var(--accent1); display: block; margin-bottom: 6px; font-size: 0.88rem; }
+  #tooltip span { display: block; color: var(--muted); line-height: 1.7; font-size: 0.78rem; }
+  #tooltip span b { color: var(--text); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); cursor: pointer; transition: color 0.2s; }
+  .legend-item:hover { color: var(--text); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  #stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px; flex: 1; min-width: 140px; }
+  .stat-box .val { font-family: 'Space Mono', monospace; font-size: 1.3rem; color: var(--accent1); }
+  .stat-box .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.8px; }
+
+  .selected-info { font-size: 0.8rem; color: var(--accent2); margin-top: 10px; min-height: 20px; font-family: 'Space Mono', monospace; }
+</style>
 </head>
 <body>
 
-    <h1>Heart Disease Interactive Dashboard</h1>
-    <div id="status">Upload a CSV to begin or ensure 'data.csv' is in the folder.</div>
+<header>
+  <div>
+    <h1>◈ Superstore Sales Dashboard</h1>
+    <p>9,994 orders · United States · 2015–2018</p>
+  </div>
+  <div id="stats">
+    <div class="stat-box"><div class="val" id="s-sales">—</div><div class="lbl">Total Sales</div></div>
+    <div class="stat-box"><div class="val" id="s-profit">—</div><div class="lbl">Total Profit</div></div>
+    <div class="stat-box"><div class="val" id="s-orders">—</div><div class="lbl">Orders</div></div>
+  </div>
+</header>
 
-    <div class="controls">
-        <div>
-            <label><strong>1. Add New CSV File:</strong></label><br>
-            <input type="file" id="upload" accept=".csv">
-        </div>
-        <div>
-            <label><strong>2. Filter by Sex:</strong></label><br>
-            <select id="filter">
-                <option value="all">All Patients</option>
-                <option value="0">Female (0)</option>
-                <option value="1">Male (1)</option>
-            </select>
-        </div>
+<!-- CONTROLS: Filter + Encode + Reconfigure + Abstract -->
+<div class="controls">
+  <!-- FILTER -->
+  <div class="ctrl-group">
+    <label>🔽 Filter — Category</label>
+    <select id="cat-filter">
+      <option value="All">All Categories</option>
+      <option value="Furniture">Furniture</option>
+      <option value="Office Supplies">Office Supplies</option>
+      <option value="Technology">Technology</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>🔽 Filter — Region</label>
+    <select id="region-filter">
+      <option value="All">All Regions</option>
+      <option value="West">West</option>
+      <option value="East">East</option>
+      <option value="Central">Central</option>
+      <option value="South">South</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>🔽 Filter — Segment</label>
+    <select id="segment-filter">
+      <option value="All">All Segments</option>
+      <option value="Consumer">Consumer</option>
+      <option value="Corporate">Corporate</option>
+      <option value="Home Office">Home Office</option>
+    </select>
+  </div>
+  <!-- ENCODE -->
+  <div class="ctrl-group">
+    <label>🎨 Encode — Color By</label>
+    <select id="color-by">
+      <option value="Category">Category</option>
+      <option value="Region">Region</option>
+      <option value="Segment">Segment</option>
+    </select>
+  </div>
+  <!-- RECONFIGURE -->
+  <div class="ctrl-group">
+    <label>🔁 Reconfigure — Scatter Axes</label>
+    <div class="toggle-row">
+      <button id="btn-sales-profit" class="active" onclick="setAxes('Sales','Profit')">Sales vs Profit</button>
+      <button id="btn-qty-discount" onclick="setAxes('Quantity','Discount')">Qty vs Discount</button>
+      <button id="btn-sales-qty" onclick="setAxes('Sales','Quantity')">Sales vs Qty</button>
     </div>
-
-    <div class="dashboard-grid">
-        <div id="bar" class="chart-container"><h3>Patients by Sex</h3></div>
-        <div id="pie" class="chart-container"><h3>Chest Pain Distribution</h3></div>
-        <div id="scatter" class="chart-container"><h3>Age vs. Cholesterol</h3></div>
-        <div id="line" class="chart-container"><h3>Age vs. Max Heart Rate</h3></div>
+  </div>
+  <!-- ABSTRACT -->
+  <div class="ctrl-group">
+    <label>📊 Abstract — Bar Chart View</label>
+    <div class="toggle-row">
+      <button id="btn-sum" class="active" onclick="setAgg('sum')">Sum</button>
+      <button id="btn-avg" onclick="setAgg('avg')">Average</button>
+      <button id="btn-count" onclick="setAgg('count')">Count</button>
     </div>
+  </div>
+</div>
 
-    <div class="project-footer">
-        <p><strong>Project Objective:</strong> This interactive medical dashboard is designed to analyze key indicators of heart disease. By visualizing data across four distinct charts, users can identify correlations between demographic factors like age and sex against clinical metrics such as cholesterol levels and maximum heart rate, providing an accessible way to interpret complex health datasets.</p>
-    </div>
+<div class="grid">
+  <!-- SCATTER: Select + Connect + Elaborate + Encode -->
+  <div class="card">
+    <h2>Scatter Plot</h2>
+    <div class="badge">Select · Elaborate · Encode · Connect</div>
+    <svg id="scatter"></svg>
+    <div class="legend" id="scatter-legend"></div>
+    <div class="selected-info" id="selected-info">Click a point to select it</div>
+  </div>
 
-    <div class="tooltip" id="main-tooltip"></div>
+  <!-- BAR: Filter + Abstract + Connect -->
+  <div class="card">
+    <h2>Sales by Sub-Category</h2>
+    <div class="badge">Filter · Abstract · Connect</div>
+    <svg id="bar"></svg>
+  </div>
+
+  <!-- LINE: Filter + Reconfigure -->
+  <div class="card grid-full">
+    <h2>Sales Trend Over Time</h2>
+    <div class="badge">Filter · Encode · Elaborate</div>
+    <svg id="line"></svg>
+    <div class="legend" id="line-legend"></div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
 
 <script>
-    const width = 500;
-    const height = 350;
-    const margin = {top: 30, right: 30, bottom: 50, left: 60};
-    const tooltip = d3.select("#main-tooltip");
-    let globalData = [];
+// ── DATA & STATE ──────────────────────────────────────────────────────────────
+let allData = [];
+let filteredData = [];
+let selectedPoint = null;
+let highlightedCategory = null;
+let xField = 'Sales', yField = 'Profit';
+let aggMode = 'sum';
 
-    // --- TOOLTIP HELPERS ---
-    function showTooltip(event, content) {
-        tooltip.html(content).style("opacity", 1).style("left", (event.pageX + 15) + "px").style("top", (event.pageY - 15) + "px");
-    }
-    function hideTooltip() { tooltip.style("opacity", 0); }
+const catColors = { 'Furniture': '#f5a623', 'Office Supplies': '#4fc3f7', 'Technology': '#81c784' };
+const regionColors = { 'West': '#f5a623', 'East': '#4fc3f7', 'Central': '#81c784', 'South': '#e57373' };
+const segmentColors = { 'Consumer': '#f5a623', 'Corporate': '#4fc3f7', 'Home Office': '#ce93d8' };
 
-    // --- DATA LOADING ---
-    d3.select("#upload").on("change", function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (event) => processData(d3.csvParse(event.target.result));
-        reader.readAsText(file);
+function getColorMap() {
+  const by = document.getElementById('color-by').value;
+  if (by === 'Region') return regionColors;
+  if (by === 'Segment') return segmentColors;
+  return catColors;
+}
+function getColorVal(d) {
+  const by = document.getElementById('color-by').value;
+  return d[by];
+}
+
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
+d3.csv('Sample_-_Superstore.csv').then(raw => {
+  allData = raw.map(d => ({
+    ...d,
+    Sales: +d.Sales, Profit: +d.Profit,
+    Quantity: +d.Quantity, Discount: +d.Discount,
+    'Order Date': new Date(d['Order Date'])
+  }));
+  applyFilters();
+}).catch(() => {
+  // fallback sample data if CSV not found
+  console.warn('CSV not loaded, using sample data');
+  generateSampleData();
+  applyFilters();
+});
+
+function generateSampleData() {
+  const cats = ['Furniture','Office Supplies','Technology'];
+  const regions = ['West','East','Central','South'];
+  const segs = ['Consumer','Corporate','Home Office'];
+  const subs = ['Chairs','Tables','Binders','Paper','Phones','Copiers','Bookcases','Labels','Accessories'];
+  for (let i = 0; i < 500; i++) {
+    const sales = Math.random() * 2000 + 10;
+    allData.push({
+      Sales: sales, Profit: sales * (Math.random() * 0.6 - 0.2),
+      Quantity: Math.floor(Math.random() * 10) + 1,
+      Discount: Math.round(Math.random() * 5) * 0.1,
+      Category: cats[i % 3], Region: regions[i % 4],
+      Segment: segs[i % 3], 'Sub-Category': subs[i % 9],
+      'Customer Name': 'Customer ' + i,
+      'Product Name': 'Product ' + i,
+      'Order Date': new Date(2015 + Math.floor(Math.random()*4), Math.floor(Math.random()*12), 1)
     });
+  }
+}
 
-    function processData(data) {
-        data.forEach(d => {
-            d.Age = +d.Age || 0;
-            d.Cholesterol = +d.Cholesterol || 0;
-            d["Max heart rate"] = +d["Max heart rate"] || 0;
-            d.Sex = String(d.Sex).trim();
-            d["Chest pain type"] = d["Chest pain type"] || "N/A";
-        });
-        globalData = data;
-        renderAll("all");
-        d3.select("#status").text(`Displaying ${data.length} records.`);
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const cat = document.getElementById('cat-filter').value;
+  const reg = document.getElementById('region-filter').value;
+  const seg = document.getElementById('segment-filter').value;
+  filteredData = allData.filter(d =>
+    (cat === 'All' || d.Category === cat) &&
+    (reg === 'All' || d.Region === reg) &&
+    (seg === 'All' || d.Segment === seg)
+  );
+  updateStats();
+  drawScatter();
+  drawBar();
+  drawLine();
+}
+
+document.getElementById('cat-filter').onchange = applyFilters;
+document.getElementById('region-filter').onchange = applyFilters;
+document.getElementById('segment-filter').onchange = applyFilters;
+document.getElementById('color-by').onchange = () => { drawScatter(); drawLine(); };
+
+// ── STATS ─────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const totalSales = d3.sum(filteredData, d => d.Sales);
+  const totalProfit = d3.sum(filteredData, d => d.Profit);
+  document.getElementById('s-sales').textContent = '$' + d3.format(',.0f')(totalSales);
+  document.getElementById('s-profit').textContent = '$' + d3.format(',.0f')(totalProfit);
+  document.getElementById('s-orders').textContent = d3.format(',')(filteredData.length);
+}
+
+// ── TOOLTIP ───────────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+function showTip(event, html) {
+  tooltip.innerHTML = html;
+  tooltip.classList.add('visible');
+  moveTip(event);
+}
+function moveTip(event) {
+  let x = event.clientX + 16, y = event.clientY - 10;
+  if (x + 260 > window.innerWidth) x = event.clientX - 260;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+function hideTip() { tooltip.classList.remove('visible'); }
+
+// ── SCATTER ───────────────────────────────────────────────────────────────────
+function drawScatter() {
+  const el = document.getElementById('scatter');
+  const W = el.parentElement.clientWidth - 40;
+  const H = Math.min(360, W * 0.65);
+  const margin = { top: 10, right: 20, bottom: 50, left: 60 };
+  const w = W - margin.left - margin.right;
+  const h = H - margin.top - margin.bottom;
+
+  d3.select('#scatter').selectAll('*').remove();
+  const svg = d3.select('#scatter')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // sample for performance
+  const sample = filteredData.length > 800
+    ? filteredData.filter((_, i) => i % Math.ceil(filteredData.length / 800) === 0)
+    : filteredData;
+
+  const xExt = d3.extent(sample, d => d[xField]);
+  const yExt = d3.extent(sample, d => d[yField]);
+  const xScale = d3.scaleLinear().domain([Math.min(0, xExt[0]), xExt[1] * 1.05]).range([0, w]);
+  const yScale = d3.scaleLinear().domain([yExt[0] * 1.1, yExt[1] * 1.1]).range([h, 0]);
+
+  // grid
+  svg.append('g').selectAll('line').data(yScale.ticks(5)).enter().append('line')
+    .attr('class','grid-line').attr('x1',0).attr('x2',w)
+    .attr('y1',d=>yScale(d)).attr('y2',d=>yScale(d));
+
+  // zero line
+  if (yExt[0] < 0) {
+    svg.append('line').attr('x1',0).attr('x2',w)
+      .attr('y1',yScale(0)).attr('y2',yScale(0))
+      .attr('stroke','#444').attr('stroke-dasharray','4,4');
+  }
+
+  svg.append('g').attr('class','axis').attr('transform',`translate(0,${h})`).call(d3.axisBottom(xScale).ticks(5).tickFormat(d => d >= 1000 ? '$'+d/1000+'k' : d));
+  svg.append('g').attr('class','axis').call(d3.axisLeft(yScale).ticks(5).tickFormat(d => d >= 1000 ? '$'+d/1000+'k' : d >= -1000 ? d : '$'+d/1000+'k'));
+
+  svg.append('text').attr('x', w/2).attr('y', h+40).attr('fill','#7a7a8e').attr('text-anchor','middle').attr('font-size','11px').text(xField);
+  svg.append('text').attr('transform','rotate(-90)').attr('x',-h/2).attr('y',-48).attr('fill','#7a7a8e').attr('text-anchor','middle').attr('font-size','11px').text(yField);
+
+  const colorMap = getColorMap();
+  const dots = svg.selectAll('.dot').data(sample).enter().append('circle')
+    .attr('class','dot')
+    .attr('cx', d => xScale(d[xField]))
+    .attr('cy', d => yScale(d[yField]))
+    .attr('r', 4)
+    .attr('fill', d => colorMap[getColorVal(d)] || '#888')
+    .attr('fill-opacity', 0.75)
+    .attr('stroke', 'none');
+
+  // ELABORATE: tooltip on hover
+  dots.on('mouseover', function(event, d) {
+    d3.select(this).attr('r', 7).attr('fill-opacity', 1);
+    showTip(event, `<strong>${d['Product Name'] ? d['Product Name'].substring(0,30)+'…' : 'Product'}</strong>
+      <span>Category: <b>${d.Category}</b></span>
+      <span>Sub-Category: <b>${d['Sub-Category']}</b></span>
+      <span>Sales: <b>$${(+d.Sales).toFixed(2)}</b></span>
+      <span>Profit: <b style="color:${+d.Profit>=0?'#81c784':'#e57373'}">$${(+d.Profit).toFixed(2)}</b></span>
+      <span>Quantity: <b>${d.Quantity}</b></span>
+      <span>Discount: <b>${(d.Discount*100).toFixed(0)}%</b></span>
+      <span>Region: <b>${d.Region}</b></span>
+      <span>Segment: <b>${d.Segment}</b></span>`);
+    // CONNECT: highlight bar
+    highlightBar(d.Category);
+  })
+  .on('mousemove', moveTip)
+  .on('mouseout', function() {
+    d3.select(this).attr('r', selectedPoint === this.__data__ ? 7 : 4).attr('fill-opacity', 0.75);
+    hideTip();
+    highlightBar(null);
+  })
+  // SELECT: click to select
+  .on('click', function(event, d) {
+    if (selectedPoint === d) {
+      selectedPoint = null;
+      dots.classed('dimmed', false).classed('selected', false);
+      document.getElementById('selected-info').textContent = 'Click a point to select it';
+    } else {
+      selectedPoint = d;
+      dots.classed('dimmed', dd => dd !== d).classed('selected', dd => dd === d);
+      document.getElementById('selected-info').textContent =
+        `✓ Selected: ${d['Sub-Category']} | $${(+d.Sales).toFixed(0)} sales | $${(+d.Profit).toFixed(0)} profit`;
     }
+  });
 
-    d3.select("#filter").on("change", function() { renderAll(this.value); });
+  // legend
+  buildLegend('scatter-legend', colorMap);
+}
 
-    function renderAll(filterValue) {
-        const filtered = filterValue === "all" ? globalData : globalData.filter(d => d.Sex === filterValue);
-        d3.selectAll("svg").remove();
-        if (filtered.length === 0) return;
-        drawBar(filtered);
-        drawPie(filtered);
-        drawScatter(filtered);
-        drawLine(filtered);
+// ── BAR CHART ─────────────────────────────────────────────────────────────────
+function drawBar() {
+  const el = document.getElementById('bar');
+  const W = el.parentElement.clientWidth - 40;
+  const H = 360;
+  const margin = { top: 10, right: 20, bottom: 80, left: 70 };
+  const w = W - margin.left - margin.right;
+  const h = H - margin.top - margin.bottom;
+
+  d3.select('#bar').selectAll('*').remove();
+  const svg = d3.select('#bar')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  // ABSTRACT: sum / avg / count
+  const grouped = d3.rollup(filteredData, v => {
+    if (aggMode === 'sum') return d3.sum(v, d => d.Sales);
+    if (aggMode === 'avg') return d3.mean(v, d => d.Sales);
+    return v.length;
+  }, d => d['Sub-Category']);
+
+  const data = Array.from(grouped, ([key, val]) => ({ key, val }))
+    .sort((a, b) => b.val - a.val).slice(0, 15);
+
+  const xScale = d3.scaleBand().domain(data.map(d => d.key)).range([0, w]).padding(0.28);
+  const yScale = d3.scaleLinear().domain([0, d3.max(data, d => d.val) * 1.1]).range([h, 0]);
+
+  svg.selectAll('.grid-line').data(yScale.ticks(4)).enter().append('line')
+    .attr('class','grid-line').attr('x1',0).attr('x2',w)
+    .attr('y1',d=>yScale(d)).attr('y2',d=>yScale(d));
+
+  svg.append('g').attr('class','axis').attr('transform',`translate(0,${h})`).call(d3.axisBottom(xScale))
+    .selectAll('text').attr('transform','rotate(-35)').attr('text-anchor','end').attr('dy','0.3em');
+  svg.append('g').attr('class','axis').call(d3.axisLeft(yScale).ticks(4).tickFormat(d =>
+    aggMode === 'count' ? d3.format(',')(d) : '$'+d3.format(',.0f')(d)));
+
+  const label = aggMode === 'sum' ? 'Total Sales' : aggMode === 'avg' ? 'Avg Sales' : 'Order Count';
+  svg.append('text').attr('transform','rotate(-90)').attr('x',-h/2).attr('y',-58)
+    .attr('fill','#7a7a8e').attr('text-anchor','middle').attr('font-size','11px').text(label);
+
+  // get cat for each subcat for coloring
+  const subcatCat = {};
+  filteredData.forEach(d => { subcatCat[d['Sub-Category']] = d.Category; });
+
+  const bars = svg.selectAll('.bar').data(data).enter().append('rect')
+    .attr('class','bar')
+    .attr('x', d => xScale(d.key))
+    .attr('y', d => yScale(d.val))
+    .attr('width', xScale.bandwidth())
+    .attr('height', d => h - yScale(d.val))
+    .attr('rx', 4)
+    .attr('fill', d => catColors[subcatCat[d.key]] || '#888')
+    .attr('fill-opacity', 0.85);
+
+  bars.on('mouseover', function(event, d) {
+    d3.select(this).classed('highlighted', true);
+    showTip(event, `<strong>${d.key}</strong><span>${label}: <b>${aggMode==='count' ? d3.format(',')(Math.round(d.val)) : '$'+d3.format(',.0f')(d.val)}</b></span>`);
+    // CONNECT: dim scatter dots not in this subcat
+    d3.selectAll('.dot').classed('dimmed', dd => dd['Sub-Category'] !== d.key);
+  })
+  .on('mousemove', moveTip)
+  .on('mouseout', function() {
+    d3.select(this).classed('highlighted', false);
+    hideTip();
+    d3.selectAll('.dot').classed('dimmed', false);
+    if (selectedPoint) {
+      d3.selectAll('.dot').classed('dimmed', dd => dd !== selectedPoint);
     }
+  });
+}
 
-    // --- CHART 1: BAR ---
-    function drawBar(data) {
-        const svg = d3.select("#bar").append("svg").attr("width", width).attr("height", height);
-        const counts = Array.from(d3.rollup(data, v => v.length, d => d.Sex), ([k, v]) => ({label: k == "0" ? "Female" : "Male", value: v}));
-        const x = d3.scaleBand().domain(counts.map(d => d.label)).range([margin.left, width - margin.right]).padding(0.4);
-        const y = d3.scaleLinear().domain([0, d3.max(counts, d => d.value)]).range([height - margin.bottom, margin.top]);
-        svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
-        svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
-        svg.selectAll("rect").data(counts).enter().append("rect")
-            .attr("x", d => x(d.label)).attr("y", d => y(d.value)).attr("width", x.bandwidth())
-            .attr("height", d => height - margin.bottom - y(d.value)).attr("fill", "#4299e1")
-            .on("mouseover", (e, d) => showTooltip(e, `<strong>Sex:</strong> ${d.label}<br><strong>Count:</strong> ${d.value}`)).on("mouseout", hideTooltip);
-    }
+function highlightBar(cat) {
+  d3.selectAll('.bar').classed('highlighted', function(d) {
+    if (!cat) return false;
+    const el = document.getElementById('bar');
+    const subcatCat = {};
+    filteredData.forEach(r => { subcatCat[r['Sub-Category']] = r.Category; });
+    return subcatCat[d.key] === cat;
+  });
+}
 
-    // --- CHART 2: PIE (Solid - No Hole) ---
-    function drawPie(data) {
-        const svg = d3.select("#pie").append("svg").attr("width", width).attr("height", height)
-                      .append("g").attr("transform", `translate(${width/2},${height/2 + 10})`);
-        const counts = Array.from(d3.rollup(data, v => v.length, d => d["Chest pain type"]), ([k, v]) => ({key: k, value: v}));
-        const pie = d3.pie().value(d => d.value);
-        // innerRadius(0) makes it a solid pie chart
-        const arc = d3.arc().innerRadius(0).outerRadius(120);
-        const color = d3.scaleOrdinal(d3.schemeTableau10);
-        svg.selectAll("path").data(pie(counts)).enter().append("path")
-            .attr("d", arc).attr("fill", (d, i) => color(i)).attr("stroke", "white").style("stroke-width", "2px")
-            .on("mouseover", (e, d) => showTooltip(e, `<strong>Type:</strong> ${d.data.key}<br><strong>Count:</strong> ${d.data.value}`)).on("mouseout", hideTooltip);
-    }
+// ── LINE CHART ────────────────────────────────────────────────────────────────
+function drawLine() {
+  const el = document.getElementById('line');
+  const W = el.parentElement.clientWidth - 40;
+  const H = 240;
+  const margin = { top: 10, right: 130, bottom: 40, left: 70 };
+  const w = W - margin.left - margin.right;
+  const h = H - margin.top - margin.bottom;
 
-    // --- CHART 3: SCATTER ---
-    function drawScatter(data) {
-        const svg = d3.select("#scatter").append("svg").attr("width", width).attr("height", height);
-        const x = d3.scaleLinear().domain(d3.extent(data, d => d.Age)).nice().range([margin.left, width - margin.right]);
-        const y = d3.scaleLinear().domain(d3.extent(data, d => d.Cholesterol)).nice().range([height - margin.bottom, margin.top]);
-        svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
-        svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
-        svg.selectAll("circle").data(data).enter().append("circle")
-            .attr("cx", d => x(d.Age)).attr("cy", d => y(d.Cholesterol)).attr("r", 4.5).attr("fill", "#f56565").attr("opacity", 0.7)
-            .on("mouseover", (e, d) => showTooltip(e, `<strong>Age:</strong> ${d.Age}<br><strong>Chol:</strong> ${d.Cholesterol}`)).on("mouseout", hideTooltip);
-    }
+  d3.select('#line').selectAll('*').remove();
+  const svg = d3.select('#line')
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // --- CHART 4: LINE ---
-    function drawLine(data) {
-        const svg = d3.select("#line").append("svg").attr("width", width).attr("height", height);
-        const agg = Array.from(d3.rollup(data, v => d3.mean(v, d => d["Max heart rate"]), d => d.Age), ([age, hr]) => ({age, hr})).sort((a,b)=>a.age-b.age);
-        const x = d3.scaleLinear().domain(d3.extent(agg, d => d.age)).range([margin.left, width - margin.right]);
-        const y = d3.scaleLinear().domain(d3.extent(agg, d => d.hr)).nice().range([height - margin.bottom, margin.top]);
-        svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
-        svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
-        const line = d3.line().x(d => x(d.age)).y(d => y(d.hr)).curve(d3.curveMonotoneX);
-        svg.append("path").datum(agg).attr("fill", "none").attr("stroke", "#48bb78").attr("stroke-width", 3).attr("d", line);
-    }
+  const colorBy = document.getElementById('color-by').value;
+  const colorMap = getColorMap();
+  const groups = [...new Set(filteredData.map(d => d[colorBy]))];
 
-    d3.csv("data.csv").then(processData).catch(() => console.log("Waiting for data upload..."));
+  const parseMonth = d => d3.timeMonth(d['Order Date']);
+  const allMonths = [...new Set(filteredData.map(d => parseMonth(d).getTime()))].sort();
+  const xScale = d3.scaleTime().domain(d3.extent(allMonths.map(t => new Date(t)))).range([0, w]);
+  let maxVal = 0;
+
+  const lineData = groups.map(grp => {
+    const gData = filteredData.filter(d => d[colorBy] === grp);
+    const monthly = d3.rollup(gData, v => d3.sum(v, d => d.Sales), d => parseMonth(d['Order Date']).getTime());
+    const points = [...monthly].map(([t, v]) => ({ date: new Date(t), val: v })).sort((a,b) => a.date - b.date);
+    maxVal = Math.max(maxVal, ...points.map(p => p.val));
+    return { grp, points };
+  });
+
+  const yScale = d3.scaleLinear().domain([0, maxVal * 1.1]).range([h, 0]);
+
+  svg.selectAll('.grid-line').data(yScale.ticks(4)).enter().append('line')
+    .attr('class','grid-line').attr('x1',0).attr('x2',w).attr('y1',d=>yScale(d)).attr('y2',d=>yScale(d));
+
+  svg.append('g').attr('class','axis').attr('transform',`translate(0,${h})`).call(d3.axisBottom(xScale).ticks(6).tickFormat(d3.timeFormat('%b %y')));
+  svg.append('g').attr('class','axis').call(d3.axisLeft(yScale).ticks(4).tickFormat(d => '$'+d3.format(',.0f')(d)));
+  svg.append('text').attr('transform','rotate(-90)').attr('x',-h/2).attr('y',-58).attr('fill','#7a7a8e').attr('text-anchor','middle').attr('font-size','11px').text('Monthly Sales');
+
+  const line = d3.line().x(d => xScale(d.date)).y(d => yScale(d.val)).curve(d3.curveMonotoneX);
+
+  lineData.forEach(({ grp, points }) => {
+    if (points.length < 2) return;
+    svg.append('path').datum(points).attr('class','line-path')
+      .attr('d', line).attr('stroke', colorMap[grp] || '#888').attr('stroke-opacity', 0.8);
+
+    svg.selectAll(`.dot-line-${grp.replace(/\s/g,'_')}`).data(points).enter().append('circle')
+      .attr('cx', d => xScale(d.date)).attr('cy', d => yScale(d.val)).attr('r', 3)
+      .attr('fill', colorMap[grp] || '#888')
+      .on('mouseover', (event, d) => {
+        showTip(event, `<strong>${grp}</strong><span>${d3.timeFormat('%B %Y')(d.date)}</span><span>Sales: <b>$${d3.format(',.0f')(d.val)}</b></span>`);
+      })
+      .on('mousemove', moveTip)
+      .on('mouseout', hideTip);
+  });
+
+  buildLegend('line-legend', colorMap, groups);
+}
+
+// ── LEGEND ────────────────────────────────────────────────────────────────────
+function buildLegend(id, colorMap, keys) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  const entries = keys || Object.keys(colorMap);
+  entries.forEach(k => {
+    if (!colorMap[k]) return;
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-dot" style="background:${colorMap[k]}"></div><span>${k}</span>`;
+    el.appendChild(item);
+  });
+}
+
+// ── RECONFIGURE BUTTONS ────────────────────────────────────────────────────────
+function setAxes(x, y) {
+  xField = x; yField = y;
+  ['btn-sales-profit','btn-qty-discount','btn-sales-qty'].forEach(id => document.getElementById(id).classList.remove('active'));
+  if (x==='Sales'&&y==='Profit') document.getElementById('btn-sales-profit').classList.add('active');
+  else if (x==='Quantity'&&y==='Discount') document.getElementById('btn-qty-discount').classList.add('active');
+  else document.getElementById('btn-sales-qty').classList.add('active');
+  drawScatter();
+}
+
+// ── ABSTRACT BUTTONS ───────────────────────────────────────────────────────────
+function setAgg(mode) {
+  aggMode = mode;
+  ['btn-sum','btn-avg','btn-count'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById('btn-'+mode).classList.add('active');
+  drawBar();
+}
+
+// ── RESIZE ─────────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => { drawScatter(); drawBar(); drawLine(); });
 </script>
 </body>
 </html>
